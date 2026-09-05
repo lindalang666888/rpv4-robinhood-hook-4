@@ -1,0 +1,22 @@
+{
+  "name": "rpv4-robinhood-hook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RPV4 single-sided virtual-reserve curve for Robinhood Chain.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "scripts": {
+    "build": "node build-and-configure.mjs",
+    "test:economics": "node scripts/verify-economics.mjs"
+  },
+  "dependencies": {
+    "@programmable/launch": "https://github.com/programmablehq/PROGRAMMABLE/releases/download/programmable-launch-v4.0.0/programmable-launch-4.0.0.tgz",
+    "@openzeppelin/contracts": "5.6.1",
+    "@openzeppelin/uniswap-hooks": "1.2.1",
+    "@uniswap/v4-core": "1.0.2"
+  },
+  "devDependencies": { "solc": "0.8.26" }
+}
