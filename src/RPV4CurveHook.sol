@@ -11,12 +11,14 @@ import {ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.so
 import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {CurrencySettler} from "@openzeppelin/uniswap-hooks/src/utils/CurrencySettler.sol";
 
 /// @notice Hook-owned, token-only inventory with a virtual constant-product curve.
 contract RPV4CurveHook is BaseCustomCurve {
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
+    using PoolIdLibrary for PoolKey;
 
     uint256 public constant FEE_DENOMINATOR = 100;
     uint256 public constant BUY_FEE = 1;
@@ -42,6 +44,7 @@ contract RPV4CurveHook is BaseCustomCurve {
     error InventoryAlreadySeeded();
     error LiquidityRemovalDisabled();
     error CallbackCallerNotPoolManager(address caller);
+    error UnexpectedPool(bytes32 actual, bytes32 expected);
 
     constructor(IPoolManager manager, address token_, address initializer_, address feeRecipient_)
         BaseHook(manager)
@@ -73,6 +76,7 @@ contract RPV4CurveHook is BaseCustomCurve {
         bytes calldata hookData
     ) internal override returns (bytes4) {
         _requirePoolManagerCallback();
+        _requireCanonicalPool(key);
         return super._beforeAddLiquidity(sender, key, params, hookData);
     }
 
@@ -83,6 +87,7 @@ contract RPV4CurveHook is BaseCustomCurve {
         bytes calldata hookData
     ) internal override returns (bytes4) {
         _requirePoolManagerCallback();
+        _requireCanonicalPool(key);
         return super._beforeRemoveLiquidity(sender, key, params, hookData);
     }
 
@@ -90,11 +95,21 @@ contract RPV4CurveHook is BaseCustomCurve {
         internal override returns (bytes4, BeforeSwapDelta, uint24)
     {
         _requirePoolManagerCallback();
+        _requireCanonicalPool(key);
         return super._beforeSwap(sender, key, params, hookData);
     }
 
     function _requirePoolManagerCallback() internal view {
         if (msg.sender != address(poolManager)) revert CallbackCallerNotPoolManager(msg.sender);
+    }
+
+    function _requireCanonicalPool(PoolKey calldata key) internal view {
+        PoolKey memory expected = poolKey();
+        bytes32 actualId = PoolId.unwrap(key.toId());
+        bytes32 expectedId = PoolId.unwrap(expected.toId());
+        if (address(expected.hooks) == address(0) || actualId != expectedId) {
+            revert UnexpectedPool(actualId, expectedId);
+        }
     }
 
     function _getUnspecifiedAmount(SwapParams calldata params) internal override returns (uint256 amountOut) {

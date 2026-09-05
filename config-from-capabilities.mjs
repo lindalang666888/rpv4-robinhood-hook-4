@@ -79,7 +79,7 @@ export function createPackConfigFromCapabilities({
         initializerValueWei: "0",
         componentKind: "token",
         declaredHookPermissions: null,
-        runtimeImmutables: [{ immutableId: "8734", abiType: "address", target: "initializer" }],
+        runtimeImmutables: [{ immutableId: "8811", abiType: "address", target: "initializer" }],
       },
       {
         targetId: "hook",
@@ -98,9 +98,9 @@ export function createPackConfigFromCapabilities({
         declaredHookPermissions: ["beforeInitialize", "beforeAddLiquidity", "beforeRemoveLiquidity", "beforeSwap", "beforeSwapReturnDelta"],
         runtimeImmutables: [
           { immutableId: "2214", abiType: "address", literal: poolManager },
-          { immutableId: "7701", abiType: "address", target: "token" },
-          { immutableId: "7703", abiType: "address", target: "initializer" },
-          { immutableId: "7705", abiType: "address", literal: launchWallet },
+          { immutableId: "7708", abiType: "address", target: "token" },
+          { immutableId: "7710", abiType: "address", target: "initializer" },
+          { immutableId: "7712", abiType: "address", literal: launchWallet },
         ],
       },
       {
