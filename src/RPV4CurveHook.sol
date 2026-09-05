@@ -7,6 +7,8 @@ import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {CurrencySettler} from "@openzeppelin/uniswap-hooks/src/utils/CurrencySettler.sol";
@@ -39,6 +41,7 @@ contract RPV4CurveHook is BaseCustomCurve {
     error ZeroOutput();
     error InventoryAlreadySeeded();
     error LiquidityRemovalDisabled();
+    error CallbackCallerNotPoolManager(address caller);
 
     constructor(IPoolManager manager, address token_, address initializer_, address feeRecipient_)
         BaseHook(manager)
@@ -52,11 +55,46 @@ contract RPV4CurveHook is BaseCustomCurve {
     function _beforeInitialize(address sender, PoolKey calldata key, uint160 price)
         internal override returns (bytes4)
     {
+        _requirePoolManagerCallback();
         if (sender != initializer || !key.currency0.isAddressZero()
             || Currency.unwrap(key.currency1) != token || address(key.hooks) != address(this) || key.fee != 0) {
             revert InvalidPool();
         }
         return super._beforeInitialize(sender, key, price);
+    }
+
+    /// @dev Repeat callback authentication in the exact submitted target source.
+    /// BaseHook also authenticates the external entrypoint; this explicit guard
+    /// makes every enabled callback independently auditable by source admission.
+    function _beforeAddLiquidity(
+        address sender,
+        PoolKey calldata key,
+        ModifyLiquidityParams calldata params,
+        bytes calldata hookData
+    ) internal override returns (bytes4) {
+        _requirePoolManagerCallback();
+        return super._beforeAddLiquidity(sender, key, params, hookData);
+    }
+
+    function _beforeRemoveLiquidity(
+        address sender,
+        PoolKey calldata key,
+        ModifyLiquidityParams calldata params,
+        bytes calldata hookData
+    ) internal override returns (bytes4) {
+        _requirePoolManagerCallback();
+        return super._beforeRemoveLiquidity(sender, key, params, hookData);
+    }
+
+    function _beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
+        internal override returns (bytes4, BeforeSwapDelta, uint24)
+    {
+        _requirePoolManagerCallback();
+        return super._beforeSwap(sender, key, params, hookData);
+    }
+
+    function _requirePoolManagerCallback() internal view {
+        if (msg.sender != address(poolManager)) revert CallbackCallerNotPoolManager(msg.sender);
     }
 
     function _getUnspecifiedAmount(SwapParams calldata params) internal override returns (uint256 amountOut) {
